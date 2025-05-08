@@ -152,16 +152,38 @@ class DiskManager:
 
     def deallocate_page(self, page_id: int) -> None:
         """
-        Deallocates a page. (Placeholder - complex to implement free space management).
-        For now, this method might not do much other than logging.
-        True deallocation would require managing a free list or compacting the file.
+        Deallocates a page by adding it to a free list for future reuse.
+
+        Args:
+            page_id: The ID of the page to deallocate.
+
+        Raises:
+            ValueError: If page_id is invalid.
         """
-        # In a real system, this would add page_id to a free list or mark it as reusable.
-        # For now, we'll just print a message. This makes allocated pages permanent.
-        print(
-            f"Warning: Deallocate_page({page_id}) called. Not fully implemented (no free space management).")
-        # To prevent re-allocation of this ID by simple counter increment, we don't touch _next_page_id_counter.
-        # If we had a free list, allocate_page would first check the free list.
+        if page_id < 0:
+            raise ValueError(f"Invalid page_id {page_id}: cannot be negative.")
+
+        with self._lock:
+            # Initialize free list if it doesn't exist
+            if not hasattr(self, '_free_page_ids'):
+                self._free_page_ids = set()
+
+            # Add the page_id to the free list for future reuse
+            self._free_page_ids.add(page_id)
+
+            # Optionally zero out the page data to prevent data leakage
+            # This is more expensive but safer
+            if self._file_io and not self._file_io.closed:
+                try:
+                    offset = page_id * PAGE_SIZE
+                    self._file_io.seek(offset)
+                    self._file_io.write(bytearray(PAGE_SIZE))
+                    self._file_io.flush()
+                except IOError:
+                    # If we can't zero the page, at least it's in our free list
+                    pass
+
+            print(f"Page {page_id} deallocated and added to free list.")
 
     def get_num_pages(self) -> int:
         """Returns the current number of pages that are considered part of the database file."""
