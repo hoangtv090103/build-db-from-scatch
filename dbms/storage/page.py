@@ -68,7 +68,8 @@ class Page:
             self._pin_count -= 1
         else:
             # This case should ideally not happen if managed correctly by BufferPoolManager
-            raise ValueError(f"Attempted to decrement pin count for page {self._page_id} when it's already 0.")
+            raise ValueError(
+                f"Attempted to decrement pin count for page {self._page_id} when it's already 0.")
 
     def mark_dirty(self) -> None:
         """Marks the page as dirty."""
@@ -84,7 +85,7 @@ class Page:
 
     def reset_memory(self) -> None:
         """Resets the page's memory to zeros and its metadata."""
-        self._data = bytearray(PAGE_SIZE) # Re-initialize or fill with zeros
+        self._data = bytearray(PAGE_SIZE)  # Re-initialize or fill with zeros
         # self._page_id = INVALID_PAGE_ID # Should be set by BufferPoolManager when reusing
         self._pin_count = 0
         self._is_dirty = False
