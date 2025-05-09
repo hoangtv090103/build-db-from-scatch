@@ -1,6 +1,6 @@
 # --- Constants ---
 import struct
-from dbms.common.config import PAGE_SIZE
+from dbms.common.config import INVALID_PAGE_ID, PAGE_SIZE
 from dbms.storage.page import Page
 
 
@@ -58,7 +58,9 @@ class BTreePage:
     def is_internal(self) -> bool:
         return self.get_node_type() == NODE_TYPE_INTERNAL
 
-    def get_max_keys(self, key_size: int, value_or_pointer_size: int, header_size: int) -> int:
+    def get_max_keys(
+        self, key_size: int, value_or_pointer_size: int, header_size: int
+    ) -> int:
         """Calculates max keys based on page size and item sizes."""
         page_size = len(self.page_data)  # Assuming page_data is full page size
         space_for_data = page_size - header_size
@@ -73,7 +75,10 @@ class BTreePage:
             # N <= (space_for_data - pointer_size) // (key_size + pointer_size)
             if (key_size + value_or_pointer_size) == 0:
                 return 0
-            return (space_for_data - value_or_pointer_size) // (key_size + value_or_pointer_size)
+            return (space_for_data - value_or_pointer_size) // (
+                key_size + value_or_pointer_size
+            )
+
 
 # --- BTreeLeafPage Class ---
 class BTreeLeafPage(BTreePage):
@@ -81,9 +86,12 @@ class BTreeLeafPage(BTreePage):
         super().__init__(page_obj, key_type_info, rid_type_info)
         self.rid_type_info = rid_type_info
 
-    def init_page(self, parent_page_id=INVALID_PAGE_ID,
-                  prev_page_id=INVALID_PAGE_ID,
-                  next_page_id=INVALID_PAGE_ID):
+    def init_page(
+        self,
+        parent_page_id=INVALID_PAGE_ID,
+        prev_page_id=INVALID_PAGE_ID,
+        next_page_id=INVALID_PAGE_ID,
+    ):
         self.set_node_type(NODE_TYPE_LEAF)
         self.set_key_count(0)
         self.set_parent_page_id(parent_page_id)
@@ -92,16 +100,16 @@ class BTreeLeafPage(BTreePage):
 
     # --- Leaf-Specific Header Accessors ---
     def get_prev_leaf_page_id(self) -> int:
-        return unpack_int_from(self.page_data, OFFSET_LEAF_PREV_PAGE_ID)
+        return struct.unpack_from(">i", self.page_data, OFFSET_LEAF_PREV_PAGE_ID)[0]
 
     def set_prev_leaf_page_id(self, page_id: int):
-        pack_int_to(self.page_data, OFFSET_LEAF_PREV_PAGE_ID, page_id)
+        struct.pack_into(">i", self.page_data, OFFSET_LEAF_PREV_PAGE_ID, page_id)
 
     def get_next_leaf_page_id(self) -> int:
-        return unpack_int_from(self.page_data, OFFSET_LEAF_NEXT_PAGE_ID)
+        return struct.unpack_from(">i", self.page_data, OFFSET_LEAF_NEXT_PAGE_ID)[0]
 
     def set_next_leaf_page_id(self, page_id: int):
-        pack_int_to(self.page_data, OFFSET_LEAF_NEXT_PAGE_ID, page_id)
+        struct.pack_into(">i", self.page_data, OFFSET_LEAF_NEXT_PAGE_ID, page_id)
 
     # --- Key-RID Pair Management ---
     def get_key_at(self, index: int):
