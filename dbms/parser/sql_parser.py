@@ -4,48 +4,122 @@ from typing import Any, List
 
 
 class CommandType(Enum):
+    """Enumeration of supported SQL command types."""
     CREATE_TABLE = 1
     INSERT = 2
     SELECT = 3
 
 
 class FilterCondition:
-    """Information for WHERE condition (simple)"""
+    """
+    Represents a simple WHERE condition in a SQL statement.
+
+    Attributes:
+        column (str): The column name to filter on.
+        operator (str): The comparison operator (e.g., '=', '>', '<').
+        value (Any): The value to compare against.
+    """
 
     def __init__(self, column_name: str, operator: str, value: Any):
+        """
+        Initialize a FilterCondition.
+
+        Args:
+            column_name (str): The column name to filter on.
+            operator (str): The comparison operator.
+            value (Any): The value to compare against.
+        """
         self.column = column_name
         self.operator = operator
         self.value = value
 
 
 class ParsedCommand:
-    """Common object for a command has been parsed"""
+    """
+    Base class for parsed SQL commands.
+
+    Attributes:
+        command_type (CommandType): The type of SQL command.
+    """
 
     def __init__(self, command_type: CommandType):
+        """
+        Initialize a ParsedCommand.
+
+        Args:
+            command_type (CommandType): The type of SQL command.
+        """
         self.command_type = command_type
 
 
 class CreateTableCommand(ParsedCommand):
+    """
+    Represents a parsed CREATE TABLE command.
+
+    Attributes:
+        table_name (str): The name of the table to create.
+        columns (List[tuple[str, str]]): List of (column name, column type) pairs.
+    """
+
     def __init__(self, table_name: str, columns: List[tuple[str, str]]):
+        """
+        Initialize a CreateTableCommand.
+
+        Args:
+            table_name (str): The name of the table to create.
+            columns (List[tuple[str, str]]): List of (column name, column type) pairs.
+        """
         super().__init__(CommandType.CREATE_TABLE)
         self.table_name = table_name
         self.columns = columns
 
 
 class InsertCommand(ParsedCommand):
+    """
+    Represents a parsed INSERT command.
+
+    Attributes:
+        table_name (str): The name of the table to insert into.
+        values (list[Any]): List of values to insert, in column order.
+    """
+
     def __init__(self, table_name: str, values: list[Any]):
+        """
+        Initialize an InsertCommand.
+
+        Args:
+            table_name (str): The name of the table to insert into.
+            values (list[Any]): List of values to insert, in column order.
+        """
         super().__init__(CommandType.INSERT)
         self.table_name = table_name
         self.values = values  # List of values to insert, in column order
 
 
 class SelectCommand(ParsedCommand):
+    """
+    Represents a parsed SELECT command.
+
+    Attributes:
+        table_name (str): The name of the table to select from.
+        select_columns (list[str]): List of column names to select, or ["*"] for all.
+        filter_condition (FilterCondition | None): WHERE condition, if any.
+    """
+
     def __init__(
         self,
         table_name: str,
         select_columns: list[str],
         filter_condition: FilterCondition | None = None,
     ):
+        """
+        Initialize a SelectCommand.
+
+        Args:
+            table_name (str): The name of the table to select from.
+            select_columns (list[str]): List of column names to select, or ["*"] for all.
+            filter_condition (FilterCondition | None): WHERE condition, if any.
+        """
         super().__init__(CommandType.SELECT)
         self.table_name = table_name
         self.select_columns = select_columns  # List of column names or ["*"]
@@ -53,7 +127,24 @@ class SelectCommand(ParsedCommand):
 
 
 class SQLParser:
+    """
+    SQLParser parses SQL strings into command objects.
+
+    Methods:
+        parse(sql_string: str) -> ParsedCommand | None:
+            Parses a SQL string and returns a ParsedCommand object or None on error.
+    """
+
     def parse(self, sql_string: str) -> ParsedCommand | None:
+        """
+        Parse a SQL string and return a ParsedCommand object.
+
+        Args:
+            sql_string (str): The SQL statement to parse.
+
+        Returns:
+            ParsedCommand | None: The parsed command object, or None if parsing fails.
+        """
         normalized_sql = sql_string.trim().upper()
 
         if normalized_sql.startswith("CREATE TABLE"):
@@ -70,6 +161,15 @@ class SQLParser:
             return None
 
     def _parse_create_table(self, sql_string: str) -> CreateTableCommand | None:
+        """
+        Parse a CREATE TABLE statement.
+
+        Args:
+            sql_string (str): The CREATE TABLE SQL statement.
+
+        Returns:
+            CreateTableCommand | None: The parsed command or None if syntax is invalid.
+        """
         # Regex to match: CREATE TABLE table_name (col1 type1, col2 type2, ...)
         pattern = r"CREATE\s+TABLE\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\((.+)\)"
         match = re.match(pattern, sql_string.strip(), re.IGNORECASE)
@@ -82,6 +182,15 @@ class SQLParser:
 
         # Split columns by comma, but handle commas inside parentheses (e.g., VARCHAR(50))
         def smart_split_columns(s):
+            """
+            Split a string of column definitions by commas, ignoring commas inside parentheses.
+
+            Args:
+                s (str): The string to split.
+
+            Returns:
+                list[str]: List of column definition strings.
+            """
             cols = []
             buf = ""
             paren = 0
@@ -113,6 +222,15 @@ class SQLParser:
         return CreateTableCommand(table_name, columns)
 
     def _parse_insert(self, sql_string: str) -> InsertCommand | None:
+        """
+        Parse an INSERT statement.
+
+        Args:
+            sql_string (str): The INSERT SQL statement.
+
+        Returns:
+            InsertCommand | None: The parsed command or None if syntax is invalid.
+        """
         # Example: INSERT INTO users VALUES (1, 'Alice', TRUE)
         pattern = r"INSERT\s+INTO\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+VALUES\s*\((.*)\)"
         match = re.match(pattern, sql_string.strip(), re.IGNORECASE)
@@ -124,6 +242,15 @@ class SQLParser:
         values_str = match.group(2)
 
         def smart_split_values(s):
+            """
+            Split a string of values by commas, ignoring commas inside quoted strings.
+
+            Args:
+                s (str): The string to split.
+
+            Returns:
+                list[str]: List of value strings.
+            """
             vals = []
             buf = ""
             in_str = False
@@ -160,6 +287,15 @@ class SQLParser:
             return vals
 
         def parse_value(val):
+            """
+            Parse a string value into its appropriate Python type.
+
+            Args:
+                val (str): The value string.
+
+            Returns:
+                Any: The parsed value.
+            """
             # Try int
             if re.match(r"^-?\d+$", val):
                 return int(val)
@@ -191,6 +327,15 @@ class SQLParser:
 
 
     def _parse_select(self, sql_string: str) -> "SelectCommand | None":
+        """
+        Parse a SELECT statement.
+
+        Args:
+            sql_string (str): The SELECT SQL statement.
+
+        Returns:
+            SelectCommand | None: The parsed command or None if syntax is invalid.
+        """
         import re
 
         # Remove leading/trailing whitespace and collapse multiple spaces
@@ -235,6 +380,15 @@ class SQLParser:
             val = wm.group("val").strip()
             # Try to parse value (reuse parse_value from above if available)
             def parse_value(val):
+                """
+                Parse a string value from a WHERE clause into its appropriate Python type.
+
+                Args:
+                    val (str): The value string.
+
+                Returns:
+                    Any: The parsed value.
+                """
                 if re.match(r"^-?\d+$", val):
                     return int(val)
                 if re.match(r"^-?\d+\.\d+$", val):

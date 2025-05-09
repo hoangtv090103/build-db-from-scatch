@@ -251,9 +251,9 @@ class Catalog:
 
             return table_meta
 
-        def get_table_metadata(self, table_name: str) -> TableMetadata | None:
-            with self._lock:
-                return self._tables.get(table_name)
+    def get_table_metadata(self, table_name: str) -> TableMetadata | None:
+        with self._lock:
+            return self._tables.get(table_name)
 
     def get_table_heap(self, table_name: str) -> "TableHeap | None":
         table_meta = self.get_table_metadata(table_name)
